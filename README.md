@@ -92,13 +92,13 @@ database:
 
 ---
 
-# 🔌 Commands  
+##🔌 Commands  
 
 `/linkaccount` - Generates a link code to connect your Minecraft account with your website profile. See -> <https://github.com/JerichoTorrent/TorrentWeb>
 
 ---
 
-# 🏗️ Building  
+## 🏗️ Building  
 
 > Requires Maven  
 1. Clone the repo and compile:
@@ -111,7 +111,7 @@ The compiled .jar will be found in target/TorrentStats-<version>.jar
 
 ---
 
-# 💡 Web Integration  
+## 💡 Web Integration  
 
 TorrentStats is built to power:
 - Player profile pages
@@ -121,12 +121,12 @@ TorrentStats is built to power:
 
 ---
 
-# 🙌 Contributing  
+## 🙌 Contributing  
 
 Want to add support for a new plugin? Open a PR or issue! Hooks are modular and easy to extend.
 
 ---
 
-# 🌐 Credit  
+## 🌐 Credit  
 
 Developed for [Torrent Network](https://discord.gg/torrent). IP: `torrentsmp.com`
