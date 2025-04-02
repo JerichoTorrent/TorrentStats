@@ -92,7 +92,7 @@ database:
 
 ---
 
-##🔌 Commands  
+## 🔌 Commands  
 
 `/linkaccount` - Generates a link code to connect your Minecraft account with your website profile. See -> <https://github.com/JerichoTorrent/TorrentWeb>
 
