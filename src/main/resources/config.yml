@@ -1,0 +1,22 @@
+server-name: Survival
+
+enabled-hooks:
+  mcmmo: true
+  evenmorefish: true
+  vault: true
+  ezchestshop: true
+  flightcontrol: true
+  thedungeons: true
+  betterteams: true
+  plotsquared: true
+  expbottle: true
+  beautyquests: true
+  bukkitstats: true # Tracks a select few important stats from https://hub.spigotmc.org/javadocs/spigot/org/bukkit/Statistic.html
+
+database:
+  type: mysql # or sqlite
+  host: localhost
+  port: 3306
+  name: torrent_stats
+  user: root
+  password: password

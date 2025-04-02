@@ -1,0 +1,22 @@
+name: TorrentStats
+main: com.jerichotorrent.torrentstats.TorrentStats
+version: ${project.version}
+api-version: '1.21'
+authors: [JerichoTorrent]
+softdepend:
+  - Vault
+  - mcMMO
+  - EvenMoreFish
+  - EzChestShop
+  - FlightControl
+  - TheDungeons
+  - BetterTeams
+  - PlotSquared
+  - ExpBottle
+  - BeautyQuests
+  - SkyFactionsReborn
+  - AdvancedJobs
+commands:
+  linkaccount:
+    description: Link your Minecraft account
+    usage: /linkaccount

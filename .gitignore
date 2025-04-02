@@ -1,0 +1,27 @@
+# Ignore Maven target folder (build output)
+target/
+
+# IntelliJ / JetBrains IDEs
+.idea/
+*.iml
+*.iws
+
+# VS Code settings
+.vscode/
+
+# Logs
+logs/
+*.log
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Local library jars (not tracked in source)
+libs/
+
+# Ignore backup or temporary files
+*~
+*.swp
+*.bak
+*.tmp
