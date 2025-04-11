@@ -17,6 +17,18 @@ softdepend:
   - SkyFactionsReborn
   - AdvancedJobs
 commands:
-  linkaccount:
-    description: Link your Minecraft account
-    usage: /linkaccount
+  login:
+    description: Link your Minecraft account to the website.
+    usage: /login
+  torrentstats:
+    description: TorrentStats debug command
+    usage: /torrentstats <debug|reload>
+    permission: torrentstats.debug
+
+permissions:
+  torrentstats.debug:
+    description: Allow use of /torrentstats debug
+    default: op
+  
+  torrentstats.reload:
+    description: Reload the TorrentStats config; can only reload server-name and re-parse hooks

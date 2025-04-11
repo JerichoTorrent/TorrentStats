@@ -1,12 +1,14 @@
 package com.jerichotorrent.torrentstats.hooks;
 
-import com.jerichotorrent.torrentstats.TorrentStats;
-import net.milkbowl.vault.economy.Economy;
+import java.util.UUID;
+
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.RegisteredServiceProvider;
 
-import java.util.UUID;
+import com.jerichotorrent.torrentstats.TorrentStats;
+
+import net.milkbowl.vault.economy.Economy;
 
 public class VaultHook {
 
@@ -29,7 +31,10 @@ public class VaultHook {
         String name = player.getName();
         double balance = economy.getBalance(player);
 
-        TorrentStats.getInstance().getDatabaseManager()
-                .updateStat(uuid, name, "balance", (int) balance); // Store as int for now
+        // Run stat update asynchronously
+        Bukkit.getScheduler().runTaskAsynchronously(TorrentStats.getInstance(), () -> {
+            TorrentStats.getInstance().getDatabaseManager()
+                .updateStat(uuid, name, "balance", (int) balance); // Stored as int for now
+        });
     }
 }

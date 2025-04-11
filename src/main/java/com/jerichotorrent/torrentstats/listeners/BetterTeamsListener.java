@@ -31,7 +31,7 @@ public class BetterTeamsListener implements Listener {
             Player player = offline.getPlayer();
             if (player != null) {
                 Team team = event.getTeam();
-                updatePlayerTeamStats(player, team);
+                updatePlayerTeamStatsAsync(player, team);
             }
         }
     }
@@ -42,17 +42,19 @@ public class BetterTeamsListener implements Listener {
         if (offline.isOnline()) {
             Player player = offline.getPlayer();
             if (player != null) {
-                plugin.getDatabaseManager().clearTeamStats(player.getUniqueId());
+                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                    plugin.getDatabaseManager().clearTeamStats(player.getUniqueId());
+                });
             }
         }
     }
 
     @EventHandler
     public void onTeamLevelUp(LevelupTeamEvent event) {
-        updateAllTeamMembers(event.getTeam());
+        updateAllTeamMembersAsync(event.getTeam());
     }
 
-    private void updateAllTeamMembers(Team team) {
+    private void updateAllTeamMembersAsync(Team team) {
         Set<UUID> memberIds = team.getMembers().getOfflinePlayers().stream()
                 .map(OfflinePlayer::getUniqueId)
                 .collect(Collectors.toSet());
@@ -62,26 +64,28 @@ public class BetterTeamsListener implements Listener {
             if (offline.isOnline()) {
                 Player player = offline.getPlayer();
                 if (player != null) {
-                    updatePlayerTeamStats(player, team);
+                    updatePlayerTeamStatsAsync(player, team);
                 }
             }
         }
     }
 
-    private void updatePlayerTeamStats(Player player, Team team) {
-        UUID uuid = player.getUniqueId();
-        String username = player.getName();
-        String teamName = team.getName();
-        int level = team.getLevel();
+    private void updatePlayerTeamStatsAsync(Player player, Team team) {
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            UUID uuid = player.getUniqueId();
+            String username = player.getName();
+            String teamName = team.getName();
+            int level = team.getLevel();
 
-        double balance = 0.0;
-        try {
-            balance = Double.parseDouble(team.getBalance());
-        } catch (NumberFormatException ignored) {}
+            double balance = 0.0;
+            try {
+                balance = Double.parseDouble(team.getBalance());
+            } catch (NumberFormatException ignored) {}
 
-        int members = team.getMembers().getOfflinePlayers().size();
-        String server = plugin.getConfigLoader().getServerName();
+            int members = team.getMembers().getOfflinePlayers().size();
+            String server = plugin.getConfigLoader().getServerName();
 
-        plugin.getDatabaseManager().updateTeamStats(uuid, username, server, teamName, level, balance, members);
+            plugin.getDatabaseManager().updateTeamStats(uuid, username, server, teamName, level, balance, members);
+        });
     }
 }

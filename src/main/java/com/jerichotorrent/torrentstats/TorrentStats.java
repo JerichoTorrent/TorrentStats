@@ -1,10 +1,12 @@
 package com.jerichotorrent.torrentstats;
 
+import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import com.jerichotorrent.torrentstats.commands.DebugCommand;
 import com.jerichotorrent.torrentstats.commands.LinkAccountCommand;
 import com.jerichotorrent.torrentstats.hooks.AdvancedJobsHook;
 import com.jerichotorrent.torrentstats.hooks.BeautyQuestsHook;
@@ -41,12 +43,13 @@ public class TorrentStats extends JavaPlugin {
         databaseManager = new DatabaseManager();
         databaseManager.initialize();
 
-        // Command: /linkaccount
-        if (getCommand("linkaccount") != null) {
-            getCommand("linkaccount").setExecutor(new LinkAccountCommand());
+        // Command: /login
+        if (getCommand("login") != null) {
+            getCommand("login").setExecutor(new LinkAccountCommand());
         } else {
-            getLogger().warning("Command 'linkaccount' not found in plugin.yml!");
+            getLogger().warning("Command 'login' not found in plugin.yml!");
         }
+        getCommand("torrentstats").setExecutor(new DebugCommand(this));
 
         // Hook: XPBottle
         if (configLoader.isHookEnabled("expbottle")) {
@@ -164,6 +167,14 @@ public class TorrentStats extends JavaPlugin {
         }     
 
         getLogger().info("TorrentStats enabled.");
+
+        if (getDatabaseManager().isConnected()) {
+            Bukkit.getScheduler().runTaskTimerAsynchronously(this, () -> {
+                getDatabaseManager().cleanupExpiredTokens();
+            }, 0L, 20L * 60 * 30); // Every 30 minutes
+        } else {
+            getLogger().warning("Skipping token cleanup task — database not connected.");
+        }
     }
 
     @Override
@@ -193,4 +204,13 @@ public class TorrentStats extends JavaPlugin {
     public StatisticTracker getStatisticTracker() {
         return statisticTracker;
     }
+
+    public void setConfigLoader(ConfigLoader configLoader) {
+        this.configLoader = configLoader;
+    }
+    
+    public void setServerName(String serverName) {
+        this.serverName = serverName;
+    }
+    
 }

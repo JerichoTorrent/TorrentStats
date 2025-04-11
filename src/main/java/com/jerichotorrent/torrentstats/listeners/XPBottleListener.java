@@ -15,17 +15,20 @@ public class XPBottleListener implements Listener {
         if (!event.getMessage().toLowerCase().startsWith("/xpbottle")) return;
 
         Player player = event.getPlayer();
-        int xpLevel = player.getLevel(); // Best guess pre-bottle level
+        int xpLevel = player.getLevel(); // Estimate pre-bottle level
 
-        // Schedule a delayed check AFTER plugin processes it
+        // Delay check so the XP change has time to apply
         Bukkit.getScheduler().runTaskLater(TorrentStats.getInstance(), () -> {
             int newLevel = player.getLevel();
             int lost = xpLevel - newLevel;
 
             if (lost > 0) {
-                TorrentStats.getInstance().getDatabaseManager()
-                    .updateStat(player.getUniqueId(), player.getName(), "total_xp_bottled", lost);
+                // Run DB call asynchronously
+                Bukkit.getScheduler().runTaskAsynchronously(TorrentStats.getInstance(), () -> {
+                    TorrentStats.getInstance().getDatabaseManager()
+                        .updateStat(player.getUniqueId(), player.getName(), "total_xp_bottled", lost);
+                });
             }
-        }, 2L); // 2 ticks delay to let the bottle plugin do its thing
+        }, 2L); // Wait 2 ticks for XP to update
     }
 }

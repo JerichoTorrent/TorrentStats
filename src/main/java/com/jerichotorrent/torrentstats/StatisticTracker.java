@@ -1,7 +1,10 @@
 package com.jerichotorrent.torrentstats;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Statistic;
 import org.bukkit.entity.EntityType;
@@ -18,29 +21,30 @@ public class StatisticTracker {
     public void syncPlayerStats(Player player) {
         UUID uuid = player.getUniqueId();
         String username = player.getName();
+        Map<String, Integer> stats = new HashMap<>();
 
-        updateStat(uuid, username, "animals_bred", player.getStatistic(Statistic.ANIMALS_BRED));
-        updateStat(uuid, username, "aviate_cm", player.getStatistic(Statistic.AVIATE_ONE_CM));
-        updateStat(uuid, username, "climb_cm", player.getStatistic(Statistic.CLIMB_ONE_CM));
-        updateStat(uuid, username, "deaths", player.getStatistic(Statistic.DEATHS));
-        updateStat(uuid, username, "fall_cm", player.getStatistic(Statistic.FALL_ONE_CM));
-        updateStat(uuid, username, "fish_caught", player.getStatistic(Statistic.FISH_CAUGHT));
-        updateStat(uuid, username, "fly_cm", player.getStatistic(Statistic.FLY_ONE_CM));
-        updateStat(uuid, username, "jumps", player.getStatistic(Statistic.JUMP));
-        updateStat(uuid, username, "mob_kills", player.getStatistic(Statistic.MOB_KILLS));
-        updateStat(uuid, username, "ticks_played", player.getStatistic(Statistic.PLAY_ONE_MINUTE));
-        updateStat(uuid, username, "player_kills", player.getStatistic(Statistic.PLAYER_KILLS));
-        updateStat(uuid, username, "raid_wins", player.getStatistic(Statistic.RAID_WIN));
-        updateStat(uuid, username, "beds_slept", player.getStatistic(Statistic.SLEEP_IN_BED));
-        updateStat(uuid, username, "swim_cm", player.getStatistic(Statistic.SWIM_ONE_CM));
-        updateStat(uuid, username, "villager_trades", player.getStatistic(Statistic.TRADED_WITH_VILLAGER));
-        updateStat(uuid, username, "walk_cm", player.getStatistic(Statistic.WALK_ONE_CM));
+        // Direct stat mappings
+        stats.put("animals_bred", player.getStatistic(Statistic.ANIMALS_BRED));
+        stats.put("aviate_cm", player.getStatistic(Statistic.AVIATE_ONE_CM));
+        stats.put("climb_cm", player.getStatistic(Statistic.CLIMB_ONE_CM));
+        stats.put("deaths", player.getStatistic(Statistic.DEATHS));
+        stats.put("fall_cm", player.getStatistic(Statistic.FALL_ONE_CM));
+        stats.put("fish_caught", player.getStatistic(Statistic.FISH_CAUGHT));
+        stats.put("fly_cm", player.getStatistic(Statistic.FLY_ONE_CM));
+        stats.put("jumps", player.getStatistic(Statistic.JUMP));
+        stats.put("mob_kills", player.getStatistic(Statistic.MOB_KILLS));
+        stats.put("ticks_played", player.getStatistic(Statistic.PLAY_ONE_MINUTE));
+        stats.put("player_kills", player.getStatistic(Statistic.PLAYER_KILLS));
+        stats.put("raid_wins", player.getStatistic(Statistic.RAID_WIN));
+        stats.put("beds_slept", player.getStatistic(Statistic.SLEEP_IN_BED));
+        stats.put("swim_cm", player.getStatistic(Statistic.SWIM_ONE_CM));
+        stats.put("villager_trades", player.getStatistic(Statistic.TRADED_WITH_VILLAGER));
+        stats.put("walk_cm", player.getStatistic(Statistic.WALK_ONE_CM));
 
         // Sub-stat totals
         int breakItem = 0;
         int craftItem = 0;
         int mineBlock = 0;
-        int killPlayerEntity = 0;
 
         for (Material material : Material.values()) {
             if (material.isItem()) {
@@ -57,17 +61,19 @@ public class StatisticTracker {
             }
         }
 
+        int killPlayerEntity = 0;
         try {
             killPlayerEntity = player.getStatistic(Statistic.KILL_ENTITY, EntityType.PLAYER);
         } catch (IllegalArgumentException ignored) {}
 
-        updateStat(uuid, username, "items_broken", breakItem);
-        updateStat(uuid, username, "items_crafted", craftItem);
-        updateStat(uuid, username, "blocks_mined", mineBlock);
-        updateStat(uuid, username, "players_killed_entity", killPlayerEntity);
-    }
+        stats.put("items_broken", breakItem);
+        stats.put("items_crafted", craftItem);
+        stats.put("blocks_mined", mineBlock);
+        stats.put("players_killed_entity", killPlayerEntity);
 
-    private void updateStat(UUID uuid, String username, String column, int value) {
-        plugin.getDatabaseManager().updateStat(uuid, username, column, value);
+        // Async database update
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            plugin.getDatabaseManager().updateStatsBatch(uuid, username, stats);
+        });
     }
 }

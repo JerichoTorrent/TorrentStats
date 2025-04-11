@@ -2,12 +2,14 @@ package com.jerichotorrent.torrentstats.listeners;
 
 import java.util.UUID;
 
+import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.inventory.ItemStack;
 
 import com.jerichotorrent.torrentstats.TorrentStats;
+import com.jerichotorrent.torrentstats.storage.DatabaseManager;
 
 import me.deadlight.ezchestshop.events.PlayerTransactEvent;
 
@@ -28,24 +30,24 @@ public class EzChestShopListener implements Listener {
         UUID ownerId = owner.getUniqueId();
         String itemName = item.getType().name();
 
-        if (isBuy) {
-            update(customerId, customer.getName(), "shop_items_bought", amount);
-            update(customerId, customer.getName(), "shop_money_spent", price);
-            update(ownerId, owner.getName(), "shop_items_sold", amount);
-            update(ownerId, owner.getName(), "shop_money_earned", price);
-        } else {
-            update(customerId, customer.getName(), "shop_items_sold", amount);
-            update(customerId, customer.getName(), "shop_money_earned", price);
-            update(ownerId, owner.getName(), "shop_items_bought", amount);
-            update(ownerId, owner.getName(), "shop_money_spent", price);
-        }
+        Bukkit.getScheduler().runTaskAsynchronously(TorrentStats.getInstance(), () -> {
+            DatabaseManager db = TorrentStats.getInstance().getDatabaseManager();
 
-        update(customerId, customer.getName(), "shop_transactions", 1);
-        update(ownerId, owner.getName(), "shop_transactions", 1);
-        update(customerId, customer.getName(), "shop_item_" + itemName.toLowerCase(), amount);
-    }
+            if (isBuy) {
+                db.updateStat(customerId, customer.getName(), "shop_items_bought", amount);
+                db.updateStat(customerId, customer.getName(), "shop_money_spent", (int) price);
+                db.updateStat(ownerId, owner.getName(), "shop_items_sold", amount);
+                db.updateStat(ownerId, owner.getName(), "shop_money_earned", (int) price);
+            } else {
+                db.updateStat(customerId, customer.getName(), "shop_items_sold", amount);
+                db.updateStat(customerId, customer.getName(), "shop_money_earned", (int) price);
+                db.updateStat(ownerId, owner.getName(), "shop_items_bought", amount);
+                db.updateStat(ownerId, owner.getName(), "shop_money_spent", (int) price);
+            }
 
-    private void update(UUID uuid, String name, String stat, double value) {
-        TorrentStats.getInstance().getDatabaseManager().updateStat(uuid, name, stat, (int) value);
+            db.updateStat(customerId, customer.getName(), "shop_transactions", 1);
+            db.updateStat(ownerId, owner.getName(), "shop_transactions", 1);
+            db.updateStat(customerId, customer.getName(), "shop_item_" + itemName.toLowerCase(), amount);
+        });
     }
 }

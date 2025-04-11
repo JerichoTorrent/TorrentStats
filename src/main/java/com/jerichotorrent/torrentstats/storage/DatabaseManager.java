@@ -3,9 +3,9 @@ package com.jerichotorrent.torrentstats.storage;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Level;
 
@@ -28,7 +28,7 @@ public class DatabaseManager {
                 String user = TorrentStats.getInstance().getConfig().getString("database.user");
                 String password = TorrentStats.getInstance().getConfig().getString("database.password");
 
-                String url = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useSSL=false";
+                String url = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useSSL=false&allowPublicKeyRetrieval=true";
                 connection = DriverManager.getConnection(url, user, password);
             } else {
                 String path = TorrentStats.getInstance().getDataFolder().getAbsolutePath() + "/stats.db";
@@ -39,7 +39,8 @@ public class DatabaseManager {
             Bukkit.getLogger().info("[TorrentStats] Database connected successfully.");
 
         } catch (SQLException e) {
-            Bukkit.getLogger().severe("[TorrentStats] Failed to connect to database:");
+            Bukkit.getLogger().log(Level.SEVERE, "[TorrentStats] Failed to connect to database: {0}", e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -120,151 +121,39 @@ public class DatabaseManager {
         }
     }
 
-    public void updateStat(UUID uuid, String username, String column, int amount) {
-        try {
-            String sql = "INSERT INTO player_stats (server, uuid, username, " + column + ") VALUES (?, ?, ?, ?) " +
-                         "ON DUPLICATE KEY UPDATE username = VALUES(username), " +
-                         column + " = " + column + " + VALUES(" + column + ")";
-            try (PreparedStatement ps = connection.prepareStatement(sql)) {
-                ps.setString(1, TorrentStats.getInstance().getConfigLoader().getServerName());
-                ps.setString(2, uuid.toString());
-                ps.setString(3, username);
-                ps.setInt(4, amount);
-                ps.executeUpdate();
-            }
-        } catch (SQLException e) {
-            Bukkit.getLogger().log(Level.SEVERE, "[TorrentStats] Failed to update stat ''{0}'' for {1}", new Object[]{column, uuid});
+    public void updateStatsBatch(UUID uuid, String username, Map<String, Integer> stats) {
+        if (connection == null) {
+            Bukkit.getLogger().log(Level.WARNING, "[TorrentStats] Skipped stat update for {0} (no DB connection)", uuid);
+            return;
         }
-    }
+        String server = TorrentStats.getInstance().getConfigLoader().getServerName();
 
-    public void setDoubleStat(UUID uuid, String username, String column, double value) {
-        try {
-            String sql = "INSERT INTO player_stats (server, uuid, username, " + column + ") VALUES (?, ?, ?, ?) " +
-                         "ON DUPLICATE KEY UPDATE username = VALUES(username), " +
-                         column + " = VALUES(" + column + ")";
-            try (PreparedStatement ps = connection.prepareStatement(sql)) {
-                ps.setString(1, TorrentStats.getInstance().getConfigLoader().getServerName());
-                ps.setString(2, uuid.toString());
-                ps.setString(3, username);
-                ps.setDouble(4, value);
-                ps.executeUpdate();
-            }
-        } catch (SQLException e) {
-            Bukkit.getLogger().log(Level.SEVERE, "[TorrentStats] Failed to set stat ''{0}'' for {1}", new Object[]{column, uuid});
+        StringBuilder sql = new StringBuilder("INSERT INTO player_stats (server, uuid, username");
+        for (String key : stats.keySet()) {
+            sql.append(", ").append(key);
         }
-    }
-
-    public int getStat(UUID uuid, String column) {
-        try {
-            String sql = "SELECT " + column + " FROM player_stats WHERE uuid = ? AND server = ?";
-            try (PreparedStatement ps = connection.prepareStatement(sql)) {
-                ps.setString(1, uuid.toString());
-                ps.setString(2, TorrentStats.getInstance().getConfigLoader().getServerName());
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) {
-                        return rs.getInt(column);
-                    }
-                }
-            }
-        } catch (SQLException e) {
-            Bukkit.getLogger().log(Level.SEVERE, "[TorrentStats] Failed to fetch stat ''{0}'' for {1}", new Object[]{column, uuid});
+        sql.append(") VALUES (?, ?, ?");
+        for (int i = 0; i < stats.size(); i++) {
+            sql.append(", ?");
+        }
+        sql.append(") ON DUPLICATE KEY UPDATE username = VALUES(username)");
+        for (String key : stats.keySet()) {
+            sql.append(", ").append(key).append(" = ").append(key).append(" + VALUES(").append(key).append(")");
         }
 
-        return 0;
-    }
+        try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
+            ps.setString(1, server);
+            ps.setString(2, uuid.toString());
+            ps.setString(3, username);
 
-    public double getDoubleStat(UUID uuid, String column) {
-        try {
-            String sql = "SELECT " + column + " FROM player_stats WHERE uuid = ? AND server = ?";
-            try (PreparedStatement ps = connection.prepareStatement(sql)) {
-                ps.setString(1, uuid.toString());
-                ps.setString(2, TorrentStats.getInstance().getConfigLoader().getServerName());
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (rs.next()) {
-                        return rs.getDouble(column);
-                    }
-                }
+            int index = 4;
+            for (Integer value : stats.values()) {
+                ps.setInt(index++, value);
             }
+
+            ps.executeUpdate();
         } catch (SQLException e) {
-            Bukkit.getLogger().log(Level.SEVERE, "[TorrentStats] Failed to fetch stat ''{0}'' for {1}", new Object[]{column, uuid});
-        }
-
-        return 0.0;
-    }
-
-    public void updateJobStat(UUID uuid, String username, String jobName, int level, double xp) {
-        try {
-            String sql = "INSERT INTO player_jobs (server, uuid, username, job_name, level, xp) " +
-                         "VALUES (?, ?, ?, ?, ?, ?) " +
-                         "ON DUPLICATE KEY UPDATE username = VALUES(username), level = VALUES(level), xp = VALUES(xp)";
-            try (PreparedStatement ps = connection.prepareStatement(sql)) {
-                ps.setString(1, TorrentStats.getInstance().getConfigLoader().getServerName());
-                ps.setString(2, uuid.toString());
-                ps.setString(3, username);
-                ps.setString(4, jobName.toLowerCase());
-                ps.setInt(5, level);
-                ps.setDouble(6, xp);
-                ps.executeUpdate();
-            }
-        } catch (SQLException e) {
-            Bukkit.getLogger().log(Level.SEVERE, "[TorrentStats] Failed to update job ''{0}'' for {1}", new Object[]{jobName, uuid});
-        }
-    }
-
-    public void updateSkillStat(UUID uuid, String skillName, int level, double currentXp, double xpToLevel) {
-        try {
-            String sql = "INSERT INTO player_skills (server, uuid, skill_name, level, current_xp, xp_to_level) " +
-                         "VALUES (?, ?, ?, ?, ?, ?) " +
-                         "ON DUPLICATE KEY UPDATE level = VALUES(level), current_xp = VALUES(current_xp), xp_to_level = VALUES(xp_to_level)";
-            try (PreparedStatement ps = connection.prepareStatement(sql)) {
-                ps.setString(1, TorrentStats.getInstance().getConfigLoader().getServerName());
-                ps.setString(2, uuid.toString());
-                ps.setString(3, skillName.toLowerCase());
-                ps.setInt(4, level);
-                ps.setDouble(5, currentXp);
-                ps.setDouble(6, xpToLevel);
-                ps.executeUpdate();
-            }
-        } catch (SQLException e) {
-            Bukkit.getLogger().log(Level.SEVERE, "[TorrentStats] Failed to update skill ''{0}'' for {1}", new Object[]{skillName, uuid});
-        }
-    }
-
-    public void updatePowerLevel(UUID uuid, String username, int powerLevel) {
-        setDoubleStat(uuid, username, "mcmmo_power_level", powerLevel);
-    }
-
-    public void clearTeamStats(UUID uuid) {
-        try {
-            String sql = "DELETE FROM player_team_stats WHERE uuid = ? AND server = ?";
-            try (PreparedStatement ps = connection.prepareStatement(sql)) {
-                ps.setString(1, uuid.toString());
-                ps.setString(2, TorrentStats.getInstance().getConfigLoader().getServerName());
-                ps.executeUpdate();
-            }
-        } catch (SQLException e) {
-            Bukkit.getLogger().log(Level.SEVERE, "[TorrentStats] Failed to clear team stats for {0}", uuid);
-        }
-    }
-
-    public void updateTeamStats(UUID uuid, String username, String server, String teamName, int level, double balance, int members) {
-        try {
-            String sql = "INSERT INTO player_team_stats (server, uuid, username, team_name, team_level, team_balance, team_members) " +
-                         "VALUES (?, ?, ?, ?, ?, ?, ?) " +
-                         "ON DUPLICATE KEY UPDATE username = VALUES(username), team_name = VALUES(team_name), team_level = VALUES(team_level), " +
-                         "team_balance = VALUES(team_balance), team_members = VALUES(team_members)";
-            try (PreparedStatement ps = connection.prepareStatement(sql)) {
-                ps.setString(1, server);
-                ps.setString(2, uuid.toString());
-                ps.setString(3, username);
-                ps.setString(4, teamName);
-                ps.setInt(5, level);
-                ps.setDouble(6, balance);
-                ps.setInt(7, members);
-                ps.executeUpdate();
-            }
-        } catch (SQLException e) {
-            Bukkit.getLogger().log(Level.SEVERE, "[TorrentStats] Failed to update team stats for {0}", uuid);
+            Bukkit.getLogger().log(Level.SEVERE, "[TorrentStats] Failed batch update for {0}: {1}", new Object[]{uuid, e.getMessage()});
         }
     }
 
@@ -277,4 +166,152 @@ public class DatabaseManager {
         } catch (SQLException ignored) {
         }
     }
+    public void updateStat(UUID uuid, String username, String column, int amount) {
+        String sql = "INSERT INTO player_stats (server, uuid, username, " + column + ") VALUES (?, ?, ?, ?) " +
+                     "ON DUPLICATE KEY UPDATE username = VALUES(username), " +
+                     column + " = " + column + " + VALUES(" + column + ")";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, TorrentStats.getInstance().getConfigLoader().getServerName());
+            ps.setString(2, uuid.toString());
+            ps.setString(3, username);
+            ps.setInt(4, amount);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            Bukkit.getLogger().log(Level.SEVERE, "[TorrentStats] Failed to update stat ''{0}'' for {1}", new Object[]{column, uuid});
+        }
+    }
+    
+    public void setDoubleStat(UUID uuid, String username, String column, double value) {
+        String sql = "INSERT INTO player_stats (server, uuid, username, " + column + ") VALUES (?, ?, ?, ?) " +
+                     "ON DUPLICATE KEY UPDATE username = VALUES(username), " +
+                     column + " = VALUES(" + column + ")";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, TorrentStats.getInstance().getConfigLoader().getServerName());
+            ps.setString(2, uuid.toString());
+            ps.setString(3, username);
+            ps.setDouble(4, value);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            Bukkit.getLogger().log(Level.SEVERE, "[TorrentStats] Failed to set stat ''{0}'' for {1}", new Object[]{column, uuid});
+        }
+    }
+
+    public double getDoubleStat(UUID uuid, String column) {
+        try {
+            String sql = "SELECT " + column + " FROM player_stats WHERE uuid = ? AND server = ?";
+            try (PreparedStatement ps = connection.prepareStatement(sql)) {
+                ps.setString(1, uuid.toString());
+                ps.setString(2, TorrentStats.getInstance().getConfigLoader().getServerName());
+                try (var rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        return rs.getDouble(column);
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            Bukkit.getLogger().log(Level.SEVERE, "[TorrentStats] Failed to fetch stat ''{0}'' for {1}", new Object[]{column, uuid});
+        }
+    
+        return 0.0;
+    }
+
+    public void updateTeamStats(UUID uuid, String username, String server, String teamName, int level, double balance, int members) {
+        String sql = "INSERT INTO player_team_stats (server, uuid, username, team_name, team_level, team_balance, team_members) " +
+                     "VALUES (?, ?, ?, ?, ?, ?, ?) " +
+                     "ON DUPLICATE KEY UPDATE username = VALUES(username), team_name = VALUES(team_name), " +
+                     "team_level = VALUES(team_level), team_balance = VALUES(team_balance), team_members = VALUES(team_members)";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, server);
+            ps.setString(2, uuid.toString());
+            ps.setString(3, username);
+            ps.setString(4, teamName);
+            ps.setInt(5, level);
+            ps.setDouble(6, balance);
+            ps.setInt(7, members);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            Bukkit.getLogger().log(Level.SEVERE, "[TorrentStats] Failed to update team stats for {0}", uuid);
+        }
+    }
+    
+    public void clearTeamStats(UUID uuid) {
+        String sql = "DELETE FROM player_team_stats WHERE uuid = ? AND server = ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, uuid.toString());
+            ps.setString(2, TorrentStats.getInstance().getConfigLoader().getServerName());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            Bukkit.getLogger().log(Level.SEVERE, "[TorrentStats] Failed to clear team stats for {0}", uuid);
+        }
+    }
+
+    public void updatePowerLevel(UUID uuid, String username, int powerLevel) {
+        updateStat(uuid, username, "mcmmo_power_level", powerLevel);
+    }
+
+    public void updateSkillStat(UUID uuid, String skillName, int level, float currentXp, float xpToLevel) {
+        String sql = "INSERT INTO player_skills (server, uuid, skill_name, level, current_xp, xp_to_level) " +
+                     "VALUES (?, ?, ?, ?, ?, ?) " +
+                     "ON DUPLICATE KEY UPDATE level = VALUES(level), current_xp = VALUES(current_xp), xp_to_level = VALUES(xp_to_level)";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, TorrentStats.getInstance().getConfigLoader().getServerName());
+            ps.setString(2, uuid.toString());
+            ps.setString(3, skillName.toLowerCase());
+            ps.setInt(4, level);
+            ps.setFloat(5, currentXp);
+            ps.setFloat(6, xpToLevel);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            Bukkit.getLogger().log(Level.SEVERE, "[TorrentStats] Failed to update skill ''{0}'' for {1}", new Object[]{skillName, uuid});
+        }
+    }
+
+    public void updateJobStat(UUID uuid, String username, String jobName, int level, double xp) {
+        String sql = "INSERT INTO player_jobs (server, uuid, username, job_name, level, xp) " +
+                     "VALUES (?, ?, ?, ?, ?, ?) " +
+                     "ON DUPLICATE KEY UPDATE username = VALUES(username), level = VALUES(level), xp = VALUES(xp)";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, TorrentStats.getInstance().getConfigLoader().getServerName());
+            ps.setString(2, uuid.toString());
+            ps.setString(3, username);
+            ps.setString(4, jobName.toLowerCase());
+            ps.setInt(5, level);
+            ps.setDouble(6, xp);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            Bukkit.getLogger().log(Level.SEVERE, "[TorrentStats] Failed to update job ''{0}'' for {1}", new Object[]{jobName, uuid});
+        }
+    }
+
+    public void storeLinkToken(UUID uuid, String token) {
+        String sql = "INSERT INTO link_tokens (token, uuid, created_at) VALUES (?, ?, NOW())";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            ps.setString(1, token);
+            ps.setString(2, uuid.toString());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            Bukkit.getLogger().log(Level.WARNING, "[TorrentStats] Failed to store link token: {0}", e.getMessage());
+        }
+    }
+    
+    public void cleanupExpiredTokens() {
+        String sql = "DELETE FROM link_tokens WHERE created_at < NOW() - INTERVAL 15 MINUTE";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            int removed = ps.executeUpdate();
+            if (removed > 0) {
+                Bukkit.getLogger().log(Level.INFO, "[TorrentStats] Cleaned up {0} expired link tokens.", removed);
+            }
+        } catch (SQLException e) {
+            Bukkit.getLogger().log(Level.WARNING, "[TorrentStats] Failed to clean expired link tokens: {0}", e.getMessage());
+        }
+    }
+
+    public boolean isConnected() {
+        try {
+            return connection != null && !connection.isClosed();
+        } catch (SQLException e) {
+            return false;
+        }
+    }
+    
 }

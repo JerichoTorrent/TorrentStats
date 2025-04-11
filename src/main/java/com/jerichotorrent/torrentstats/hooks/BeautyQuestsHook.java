@@ -29,10 +29,13 @@ public class BeautyQuestsHook {
         UUID uuid = player.getUniqueId();
         String username = player.getName();
 
-        PlayerAccount account = PlayersManager.getPlayerAccount(player);
-        if (account == null) return;
+        // Async: get quest count and write to DB
+        Bukkit.getScheduler().runTaskAsynchronously(TorrentStats.getInstance(), () -> {
+            PlayerAccount account = PlayersManager.getPlayerAccount(player);
+            if (account == null) return;
 
-        int completed = account.getQuestsDatas().size();
-        database.updateStat(uuid, username, "quests_completed", completed);
+            int completed = account.getQuestsDatas().size();
+            database.updateStat(uuid, username, "quests_completed", completed);
+        });
     }
 }

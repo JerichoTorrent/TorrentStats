@@ -29,20 +29,22 @@ public class PlotSquaredHook {
         UUID uuid = player.getUniqueId();
         String username = player.getName();
 
-        PlotPlayer<?> plotPlayer = PlotPlayer.from(player);
-        if (plotPlayer == null) return;
+        Bukkit.getScheduler().runTaskAsynchronously(TorrentStats.getInstance(), () -> {
+            PlotPlayer<?> plotPlayer = PlotPlayer.from(player);
+            if (plotPlayer == null) return;
 
-        Set<Plot> plots = plotPlayer.getPlots();
-        if (plots == null || plots.isEmpty()) {
-            database.updateStat(uuid, username, "plots_owned", 0);
-            database.updateStat(uuid, username, "plots_merged", 0);
-            return;
-        }
+            Set<Plot> plots = plotPlayer.getPlots();
+            if (plots == null || plots.isEmpty()) {
+                database.updateStat(uuid, username, "plots_owned", 0);
+                database.updateStat(uuid, username, "plots_merged", 0);
+                return;
+            }
 
-        int ownedPlots = plots.size();
-        long mergedPlots = plots.stream().filter(Plot::isMerged).count();
+            int ownedPlots = plots.size();
+            long mergedPlots = plots.stream().filter(Plot::isMerged).count();
 
-        database.updateStat(uuid, username, "plots_owned", ownedPlots);
-        database.updateStat(uuid, username, "plots_merged", (int) mergedPlots);
+            database.updateStat(uuid, username, "plots_owned", ownedPlots);
+            database.updateStat(uuid, username, "plots_merged", (int) mergedPlots);
+        });
     }
 }

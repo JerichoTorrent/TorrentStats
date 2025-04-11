@@ -2,6 +2,7 @@ package com.jerichotorrent.torrentstats.listeners;
 
 import java.util.UUID;
 
+import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 
@@ -19,20 +20,22 @@ public class EvenMoreFishListener implements Listener {
         Rarity rarity = fish.getRarity();
         UUID uuid = event.getPlayer().getUniqueId();
         String username = event.getPlayer().getName();
-
-        DatabaseManager db = TorrentStats.getInstance().getDatabaseManager();
-
-        // Track legendary fish caught
-        if (rarity.toString().equalsIgnoreCase("legendary")) {
-            db.updateStat(uuid, username, "legendary_fish_caught", 1);
-        }
-
-        // Track largest fish caught
         double caughtLength = fish.getLength();
-        double currentRecord = db.getDoubleStat(uuid, "largest_fish");
 
-        if (caughtLength > currentRecord) {
-            db.setDoubleStat(uuid, username, "largest_fish", caughtLength);
-        }
+        // Async database logic
+        Bukkit.getScheduler().runTaskAsynchronously(TorrentStats.getInstance(), () -> {
+            DatabaseManager db = TorrentStats.getInstance().getDatabaseManager();
+
+            // Track legendary fish caught
+            if (rarity != null && "legendary".equalsIgnoreCase(rarity.toString())) {
+                db.updateStat(uuid, username, "legendary_fish_caught", 1);
+            }
+
+            // Track largest fish caught
+            double currentRecord = db.getDoubleStat(uuid, "largest_fish");
+            if (caughtLength > currentRecord) {
+                db.setDoubleStat(uuid, username, "largest_fish", caughtLength);
+            }
+        });
     }
 }

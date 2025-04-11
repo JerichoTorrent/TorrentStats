@@ -28,20 +28,22 @@ public class McMMOHook {
         UUID uuid = player.getUniqueId();
         String username = player.getName();
 
-        // Power level
-        int powerLevel = ExperienceAPI.getPowerLevel(player);
-        database.updatePowerLevel(uuid, username, powerLevel);
+        Bukkit.getScheduler().runTaskAsynchronously(TorrentStats.getInstance(), () -> {
+            // Power level
+            int powerLevel = ExperienceAPI.getPowerLevel(player);
+            database.updatePowerLevel(uuid, username, powerLevel);
 
-        // Loop through skills
-        for (PrimarySkillType skill : PrimarySkillType.values()) {
-            String skillName = skill.name();
-            @SuppressWarnings("deprecation")
-            int level = ExperienceAPI.getLevel(player, skillName);
-            float currentXp = ExperienceAPI.getXP(player, skillName);
-            float xpForNextLevel = ExperienceAPI.getXPToNextLevel(player, skillName);
-            float xpToLevel = xpForNextLevel >= 0 ? xpForNextLevel : 0;
+            // Loop through skills
+            for (PrimarySkillType skill : PrimarySkillType.values()) {
+                String skillName = skill.name();
+                @SuppressWarnings("deprecation")
+                int level = ExperienceAPI.getLevel(player, skillName);
+                float currentXp = ExperienceAPI.getXP(player, skillName);
+                float xpForNextLevel = ExperienceAPI.getXPToNextLevel(player, skillName);
+                float xpToLevel = Math.max(xpForNextLevel, 0);
 
-            database.updateSkillStat(uuid, skillName, level, currentXp, xpToLevel);
-        }
+                database.updateSkillStat(uuid, skillName, level, currentXp, xpToLevel);
+            }
+        });
     }
 }
