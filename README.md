@@ -66,8 +66,20 @@ Each table has a server name column for splitting up data on networks.
 After installing the plugin and running the server once, a `config.yml` will be generated. Here's a sample:
 
 ```yaml
+#  ______                           __  _____ __        __      
+# /_  __/___  _____________  ____  / /_/ ___// /_____ _/ /______
+#  / / / __ \/ ___/ ___/ _ \/ __ \/ __/\__ \/ __/ __ `/ __/ ___/
+# / / / /_/ / /  / /  /  __/ / / / /_ ___/ / /_/ /_/ / /_(__  ) 
+#/_/  \____/_/  /_/   \___/_/ /_/\__//____/\__/\__,_/\__/____/  
+                                                               
+# This is the per-server configuration for TorrentStats: https://github.com/JerichoTorrent/TorrentStats
+
+# The server name is unique; this will be how your split up stats from each server across your network.
+# If you want to share statistics, use a remote database (MySQL, MariaDB, etc) for the plugin hook/listener.
 server-name: Survival
 
+# Enable plugin hooks. If the plugin is not detected at run-time, it will ignore it. If the plugin fails to
+# start, report it on Github.
 enabled-hooks:
   mcmmo: true
   evenmorefish: true
@@ -79,8 +91,9 @@ enabled-hooks:
   plotsquared: true
   expbottle: true
   beautyquests: true
-  bukkit: true
+  bukkitstats: true # Tracks a select few important stats from https://hub.spigotmc.org/javadocs/spigot/org/bukkit/Statistic.html
 
+# Input your MySQL database credentials here. If you're using SQLite, just change the type to sqlite and leave the rest alone.
 database:
   type: mysql # or sqlite
   host: localhost
@@ -88,13 +101,17 @@ database:
   name: torrent_stats
   user: root
   password: password
+
+# Your web URL is the base URL for your website.
+web-url: "https://torrentsmp.com" # or your dev env URL
 ```
 
 ---
 
 ## 🔌 Commands  
 
-`/linkaccount` - Generates a link code to connect your Minecraft account with your website profile. See -> <https://github.com/JerichoTorrent/TorrentWeb>
+`/login` - Generates a link code to connect your Minecraft account with your website profile. See -> <https://github.com/JerichoTorrent/TorrentWeb>
+`/torrentstats <debug|reload>` - Shows debug info or reload the config file.
 
 ---
 
