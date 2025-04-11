@@ -118,6 +118,13 @@ public class DatabaseManager {
                     "PRIMARY KEY (server, uuid)" +
                     ")";
             stmt.executeUpdate(playerTeamStats);
+
+            String linkTokens = "CREATE TABLE IF NOT EXISTS link_tokens (" +
+                    "token VARCHAR(64) NOT NULL PRIMARY KEY," +
+                    "uuid VARCHAR(36) NOT NULL," +
+                    "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP" +
+                    ")";
+            stmt.executeUpdate(linkTokens);
         }
     }
 

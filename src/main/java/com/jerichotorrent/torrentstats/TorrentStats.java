@@ -1,6 +1,7 @@
 package com.jerichotorrent.torrentstats;
 
 import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -124,7 +125,10 @@ public class TorrentStats extends JavaPlugin {
                 getServer().getPluginManager().registerEvents(new Listener() {
                     @EventHandler
                     public void onJoin(PlayerJoinEvent event) {
-                        mcMMOHook.syncMcMMOStats(event.getPlayer());
+                        Player player = event.getPlayer();
+                        Bukkit.getScheduler().runTaskLater(TorrentStats.this, () -> {
+                            mcMMOHook.syncMcMMOStats(player);
+                        }, 100L); // 5 second delay
                     }
                 }, this);
                 getLogger().info("mcMMO hooked.");
