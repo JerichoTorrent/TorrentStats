@@ -145,7 +145,7 @@ public class DatabaseManager {
         }
         sql.append(") ON DUPLICATE KEY UPDATE username = VALUES(username)");
         for (String key : stats.keySet()) {
-            sql.append(", ").append(key).append(" = ").append(key).append(" + VALUES(").append(key).append(")");
+            sql.append(", ").append(key).append(" = VALUES(").append(key).append(")");
         }
 
         try (PreparedStatement ps = connection.prepareStatement(sql.toString())) {
@@ -176,7 +176,7 @@ public class DatabaseManager {
     public void updateStat(UUID uuid, String username, String column, int amount) {
         String sql = "INSERT INTO player_stats (server, uuid, username, " + column + ") VALUES (?, ?, ?, ?) " +
                      "ON DUPLICATE KEY UPDATE username = VALUES(username), " +
-                     column + " = " + column + " + VALUES(" + column + ")";
+                     column + " = VALUES(" + column + ")";
         try (PreparedStatement ps = connection.prepareStatement(sql)) {
             ps.setString(1, TorrentStats.getInstance().getConfigLoader().getServerName());
             ps.setString(2, uuid.toString());
@@ -268,6 +268,11 @@ public class DatabaseManager {
             ps.setFloat(5, currentXp);
             ps.setFloat(6, xpToLevel);
             ps.executeUpdate();
+            Bukkit.getLogger().log(
+                Level.INFO,
+                "[TorrentStats] Updating skill ''{0}'' for {1} → Level: {2}, XP: {3}/{4}",
+                new Object[]{skillName, uuid, level, currentXp, xpToLevel}
+            );
         } catch (SQLException e) {
             Bukkit.getLogger().log(Level.SEVERE, "[TorrentStats] Failed to update skill ''{0}'' for {1}", new Object[]{skillName, uuid});
         }
@@ -285,6 +290,7 @@ public class DatabaseManager {
             ps.setInt(5, level);
             ps.setDouble(6, xp);
             ps.executeUpdate();
+            Bukkit.getLogger().log(Level.INFO, "[TorrentStats] Updating job ''{0}'' for {1} → Level: {2}, XP: {3}", new Object[]{jobName, username, level, xp});
         } catch (SQLException e) {
             Bukkit.getLogger().log(Level.SEVERE, "[TorrentStats] Failed to update job ''{0}'' for {1}", new Object[]{jobName, uuid});
         }
