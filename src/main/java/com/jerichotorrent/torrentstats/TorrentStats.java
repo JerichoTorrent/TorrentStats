@@ -155,7 +155,19 @@ public class TorrentStats extends JavaPlugin {
 
         // Hook:Teams
         if (configLoader.isHookEnabled("betterteams")) {
-            getServer().getPluginManager().registerEvents(new BetterTeamsListener(this), this);
+            BetterTeamsListener teamsListener = new BetterTeamsListener(this);
+            getServer().getPluginManager().registerEvents(teamsListener, this);
+        
+            getServer().getPluginManager().registerEvents(new Listener() {
+                @EventHandler
+                public void onJoin(PlayerJoinEvent event) {
+                    Player player = event.getPlayer();
+                    Bukkit.getScheduler().runTaskLater(TorrentStats.this, () -> {
+                        teamsListener.syncTeamStats(player);
+                    }, 60L); // ~3 second delay to let BetterTeams load
+                }
+            }, this);
+        
             getLogger().info("BetterTeams hooked.");
         }
 
@@ -216,5 +228,4 @@ public class TorrentStats extends JavaPlugin {
     public void setServerName(String serverName) {
         this.serverName = serverName;
     }
-    
 }

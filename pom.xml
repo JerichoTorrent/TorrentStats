@@ -63,7 +63,7 @@
         <dependency>
             <groupId>me.deadlight</groupId>
             <artifactId>EzChestShop</artifactId>
-            <version>1.8.1</version>
+            <version>1.8.2-nouish</version>
             <scope>provided</scope>
         </dependency>
 

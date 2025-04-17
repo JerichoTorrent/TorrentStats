@@ -4,13 +4,16 @@ import java.util.UUID;
 
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.ItemStack;
 
 import com.jerichotorrent.torrentstats.TorrentStats;
 import com.jerichotorrent.torrentstats.storage.DatabaseManager;
 
+import me.deadlight.ezchestshop.data.ShopContainer;
 import me.deadlight.ezchestshop.events.PlayerTransactEvent;
 
 public class EzChestShopListener implements Listener {
@@ -38,9 +41,11 @@ public class EzChestShopListener implements Listener {
                 db.updateStat(customerId, customer.getName(), "shop_money_spent", (int) price);
                 db.updateStat(ownerId, owner.getName(), "shop_items_sold", amount);
                 db.updateStat(ownerId, owner.getName(), "shop_money_earned", (int) price);
+                db.updateStat(ownerId, owner.getName(), "ez_profits", (int) price);
             } else {
                 db.updateStat(customerId, customer.getName(), "shop_items_sold", amount);
                 db.updateStat(customerId, customer.getName(), "shop_money_earned", (int) price);
+                db.updateStat(customerId, customer.getName(), "ez_profits", (int) price);
                 db.updateStat(ownerId, owner.getName(), "shop_items_bought", amount);
                 db.updateStat(ownerId, owner.getName(), "shop_money_spent", (int) price);
             }
@@ -49,5 +54,36 @@ public class EzChestShopListener implements Listener {
             db.updateStat(ownerId, owner.getName(), "shop_transactions", 1);
             db.updateStat(customerId, customer.getName(), "shop_item_" + itemName.toLowerCase(), amount);
         });
+    }
+
+    @EventHandler
+    public void onJoin(PlayerJoinEvent event) {
+        Player player = event.getPlayer();
+        UUID uuid = player.getUniqueId();
+        String username = player.getName();
+
+        Bukkit.getScheduler().runTaskLaterAsynchronously(TorrentStats.getInstance(), () -> {
+            long ownedShops = ShopContainer.getShops().stream()
+                .filter(shop -> {
+                    try {
+                        var settingsField = shop.getClass().getDeclaredField("settings");
+                        settingsField.setAccessible(true);
+                        Object settings = settingsField.get(shop);
+
+                        var ownerField = settings.getClass().getDeclaredField("owner");
+                        ownerField.setAccessible(true);
+                        Object owner = ownerField.get(settings);
+
+                        return uuid.equals(owner);
+                    } catch (IllegalAccessException | IllegalArgumentException | NoSuchFieldException | SecurityException e) {
+                        e.printStackTrace();
+                        return false;
+                    }
+                })
+                .count();
+
+            TorrentStats.getInstance().getDatabaseManager()
+                .updateStat(uuid, username, "ez_shops", (int) ownedShops);
+        }, 60L); // Delay to let EzChestShop finish loading
     }
 }

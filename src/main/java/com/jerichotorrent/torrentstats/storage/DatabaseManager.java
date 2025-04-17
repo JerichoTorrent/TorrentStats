@@ -114,6 +114,7 @@ public class DatabaseManager {
                     "username VARCHAR(32)," +
                     "team_name VARCHAR(64)," +
                     "team_level INT," +
+                    "team_balance DOUBLE DEFAULT 0," +
                     "team_members INT," +
                     "PRIMARY KEY (server, uuid)" +
                     ")";
@@ -237,7 +238,8 @@ public class DatabaseManager {
             ps.setInt(7, members);
             ps.executeUpdate();
         } catch (SQLException e) {
-            Bukkit.getLogger().log(Level.SEVERE, "[TorrentStats] Failed to update team stats for {0}", uuid);
+            Bukkit.getLogger().log(Level.SEVERE, "[TorrentStats] Failed to update team stats for {0}: {1}", new Object[]{uuid, e.getMessage()});
+            e.printStackTrace();
         }
     }
     

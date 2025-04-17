@@ -70,6 +70,12 @@ public class BetterTeamsListener implements Listener {
         }
     }
 
+    public void syncTeamStats(Player player) {
+        Team team = com.booksaw.betterTeams.Team.getTeam(player);
+        if (team == null) return;
+        updatePlayerTeamStatsAsync(player, team);
+    }
+
     private void updatePlayerTeamStatsAsync(Player player, Team team) {
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             UUID uuid = player.getUniqueId();
