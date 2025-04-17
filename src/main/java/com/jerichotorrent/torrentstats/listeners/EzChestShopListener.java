@@ -61,27 +61,12 @@ public class EzChestShopListener implements Listener {
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
         String username = player.getName();
-
+    
         Bukkit.getScheduler().runTaskLaterAsynchronously(TorrentStats.getInstance(), () -> {
             long ownedShops = ShopContainer.getShops().stream()
-                .filter(shop -> {
-                    try {
-                        var settingsField = shop.getClass().getDeclaredField("settings");
-                        settingsField.setAccessible(true);
-                        Object settings = settingsField.get(shop);
-
-                        var ownerField = settings.getClass().getDeclaredField("owner");
-                        ownerField.setAccessible(true);
-                        Object owner = ownerField.get(settings);
-
-                        return uuid.equals(owner);
-                    } catch (IllegalAccessException | IllegalArgumentException | NoSuchFieldException | SecurityException e) {
-                        e.printStackTrace();
-                        return false;
-                    }
-                })
+                .filter(shop -> uuid.equals(shop.getOwnerID()))
                 .count();
-
+    
             TorrentStats.getInstance().getDatabaseManager()
                 .updateStat(uuid, username, "ez_shops", (int) ownedShops);
         }, 60L); // Delay to let EzChestShop finish loading
