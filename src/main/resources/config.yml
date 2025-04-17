@@ -23,6 +23,7 @@ enabled-hooks:
   plotsquared: true
   expbottle: true
   beautyquests: true
+  advancedjobs: true
   bukkitstats: true # Tracks a select few important stats from https://hub.spigotmc.org/javadocs/spigot/org/bukkit/Statistic.html
 
 # Input your MySQL database credentials here. If you're using SQLite, just change the type to sqlite and leave the rest alone.

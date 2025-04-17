@@ -1,32 +1,35 @@
 package com.jerichotorrent.torrentstats.hooks;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+import java.lang.reflect.Field;
+import java.math.BigDecimal;
 import java.util.Map;
 import java.util.UUID;
-import java.util.logging.Level;
 
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.Plugin;
 
 import com.jerichotorrent.torrentstats.TorrentStats;
 import com.jerichotorrent.torrentstats.storage.DatabaseManager;
 
+import net.advancedplugins.jobs.Core;
+import net.advancedplugins.jobs.objects.users.JobStore;
+import net.advancedplugins.jobs.objects.users.User;
+import net.advancedplugins.jobs.objects.users.UserJobInfo;
+import net.advancedplugins.simplespigot.storage.storage.Storage;
+
 public class AdvancedJobsHook {
 
-    private final Plugin plugin;
     private final DatabaseManager database;
 
     public AdvancedJobsHook() {
-        this.plugin = Bukkit.getPluginManager().getPlugin("AdvancedJobs");
         this.database = TorrentStats.getInstance().getDatabaseManager();
     }
 
     public boolean isAvailable() {
-        return plugin != null && plugin.isEnabled();
+        return Bukkit.getPluginManager().isPluginEnabled("AdvancedJobs");
     }
 
+    @SuppressWarnings("LoggerStringConcat")
     public void syncJobStats(Player player) {
         if (!isAvailable()) return;
 
@@ -35,28 +38,45 @@ public class AdvancedJobsHook {
 
         Bukkit.getScheduler().runTaskAsynchronously(TorrentStats.getInstance(), () -> {
             try {
-                Class<?> ajAPI = Class.forName("me.wazup.advancedjobs.API");
-                Method getLevels = ajAPI.getMethod("getPlayerJobStats", Player.class);
-                Method getXP = ajAPI.getMethod("getJobXP", Player.class, String.class);
+                Storage<User> storage = Core.getInstance().getUserStorage();
+                User user = storage.load(uuid.toString());
 
-                Object result = getLevels.invoke(null, player);
-                if (result instanceof Map<?, ?> jobStats) {
-                    for (Map.Entry<?, ?> entry : jobStats.entrySet()) {
-                        String jobName = entry.getKey().toString();
-                        int level = Integer.parseInt(entry.getValue().toString());
-
-                        double xp = 0.0;
-                        try {
-                            Object xpResult = getXP.invoke(null, player, jobName);
-                            xp = xpResult instanceof Number ? ((Number) xpResult).doubleValue() : 0.0;
-                        } catch (IllegalAccessException | InvocationTargetException ignored) {}
-
-                        database.updateJobStat(uuid, username, jobName, level, xp);
-                    }
+                if (user == null) {
+                    Bukkit.getLogger().warning("[TorrentStats] AdvancedJobs: No user data found for " + username);
+                    return;
                 }
-            } catch (ClassNotFoundException | IllegalAccessException | NoSuchMethodException |
-                     NumberFormatException | SecurityException | InvocationTargetException e) {
-                TorrentStats.getInstance().getLogger().log(Level.WARNING, "Failed to sync AdvancedJobs stats: {0}", e.getMessage());
+
+                JobStore jobStore = user.getJobStore();
+                Map<String, UserJobInfo> jobs = jobStore.asMap();
+
+                if (jobs.isEmpty()) {
+                    Bukkit.getLogger().info("[TorrentStats] AdvancedJobs: No jobs to sync for " + username);
+                    return;
+                }
+
+                for (Map.Entry<String, UserJobInfo> entry : jobs.entrySet()) {
+                    String jobName = entry.getKey();
+                    UserJobInfo info = entry.getValue();
+                    int level = info.getLevel();
+
+                    double xp = 0.0;
+                    try {
+                        Field xpField = UserJobInfo.class.getDeclaredField("N");
+                        xpField.setAccessible(true);
+                        Object raw = xpField.get(info);
+                        if (raw instanceof BigDecimal bd) {
+                            xp = bd.doubleValue();
+                        }
+                    } catch (IllegalAccessException | IllegalArgumentException | NoSuchFieldException | SecurityException e) {
+                        Bukkit.getLogger().warning("[TorrentStats] Failed to read XP for job '" + jobName + "' → " + e.getMessage());
+                    }
+
+                    database.updateJobStat(uuid, username, jobName, level, xp);
+                }
+
+                Bukkit.getLogger().info("[TorrentStats] Synced " + jobs.size() + " AdvancedJobs for " + username);
+            } catch (Exception ex) {
+                Bukkit.getLogger().severe("[TorrentStats] Failed AdvancedJobs sync for " + username + ": " + ex.getMessage());
             }
         });
     }
